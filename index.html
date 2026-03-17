@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paper Homepage · fixed overlap arrows</title>
+  <style>
+    /* ----- base & layout (unchanged except arrow containers) ----- */
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #222;
+      background: linear-gradient(180deg, #f5f9fc 0%, #ffffff 60%);
+    }
+    .container {
+      max-width: 960px;
+      margin: 40px auto;
+      padding: 48px 32px;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0, 40, 120, 0.06);
+    }
+    h1, h2, h3 { line-height: 1.3; margin-top: 1.6em; }
+    h1 { font-size: 2.4em; margin-top: 0; }
+    h2 { font-size: 1.8em; border-bottom: 1px solid #dde6ef; padding-bottom: 6px; }
+    p { margin: 1em 0; text-align: justify; }
+    .authors { font-size: 1.05em; margin: 12px 0; }
+    .affiliation { color: #555; font-size: 0.95em; }
+    .links { margin: 20px 0 30px 0; }
+    .links a {
+      display: inline-block; margin-right: 12px; padding: 9px 16px;
+      border: 1px solid #cfd9e3; border-radius: 999px; text-decoration: none;
+      color: #1a3a5a; font-size: 0.95em; background: #f2f7fb;
+    }
+    .links a:hover { background: #f5f5f5; }
+    .figure { margin: 30px 0; text-align: center; }
+    .figure img { max-width: 90%; border-radius: 6px; border: 0px solid #ddd; }
+    .caption { font-size: 0.9em; color: #555; margin-top: 6px; }
+    ul { margin-left: 1.2em; }
+    pre { background: #f7f7f7; padding: 14px; overflow-x: auto; border-radius: 6px; font-size: 0.9em; }
+    footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e5e5e5; font-size: 0.9em; color: #666; text-align: center; }
+
+    /* ----- colour editing module (unchanged) ----- */
+    .figure-wrapper { display: flex; justify-content: center; position: relative; }
+    .figure-comparison { display: flex; gap: 32px; align-items: center; margin: 40px auto; }
+    .left-images { display: flex; flex-direction: column; gap: 14px; }
+    .thumb { position: relative; width: 60px; cursor: pointer; }
+    .thumb.no-click { cursor: default; }
+    .figure-comparison img { width: 100%; border-radius: 12px; border: none; display: block; }
+    .hover-preview {
+      position: absolute; top: 0; left: 140px; width: 260px; opacity: 0;
+      pointer-events: none; transition: opacity 0.2s ease; z-index: 10;
+    }
+    .hover-preview img { border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+    .thumb:hover .hover-preview { opacity: 1; }
+    .thumb.active img { outline: 3px solid #4a90e2; outline-offset: -3px; }
+    .right-image { width: 480px; }
+    .right-image img { width: 100%; border-radius: 16px; }
+
+    /* ========= 重构后的箭头样式 ========= */
+    /* 统一箭头基础样式（不再使用重叠定位，而是由父容器独立放置） */
+    .nav-arrow {
+      /* 移除 absolute / transform 默认，下面按容器各自定义 */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      font-size: 28px;
+      font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(255,255,255,0.85);  /* 稍微加强一点不透明度避免透过文字 */
+      backdrop-filter: blur(6px);
+      color: #333;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+      transition: all 0.25s ease;
+      /* 防止文字挤压 */
+      line-height: 1;
+    }
+    .nav-arrow:hover {
+      background: rgba(255,255,255,1);
+      transform: scale(1.12);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+    }
+
+    /* ----- slider 外层容器改造：使用flex让箭头和slider并排，不再用absolute重叠 ----- */
+    .slider-section {
+      margin: 40px 0;
+    }
+    .slider-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;                /* 箭头与slider之间的间距 */
+    }
+    .slider-container {
+      flex: 1;                  /* 占用剩余宽度，让箭头自然在旁边 */
+      max-width: 720px;         /* 限制一下slider本身宽度 */
+      overflow: hidden;         /* 核心：隐藏溢出 */
+      border-radius: 16px;
+    }
+    .slider {
+      display: flex;
+      transition: transform 0.5s ease-in-out;
+      width: 100%;
+    }
+    .slide {
+      flex: 0 0 100%;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .slide img {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+    }
+
+    /* ----- colour-editing 区域改造：将箭头移到外部 flex 行，避免与图片重叠 ----- */
+    .editing-section {
+      margin: 40px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .editing-arrows-container {
+      display: flex;
+      align-items: center;
+      gap: 24px;                 /* 箭头和中间内容的间距 */
+      width: 100%;
+      justify-content: center;
+    }
+    /* 中间的 figure-comparison 不再由wrapper包裹，让箭头在左右两边 */
+    .editing-arrows-container .figure-comparison {
+      margin: 0;                 /* 去掉原有外边距 */
+      flex: 0 1 auto;
+    }
+    /* 移除 .figure-wrapper 的定位，用新的结构 */
+    .figure-wrapper-old {
+      /* 不再使用，保留空的占位符，但实际用新结构 */
+      display: none;
+    }
+
+    /* 为了让布局更紧凑，微调箭头间距 */
+    .editing-arrows-container .nav-arrow {
+      flex-shrink: 0;            /* 防止箭头被压缩 */
+    }
+
+    /* 小屏适配 */
+    @media (max-width: 720px) {
+      .slider-wrapper {
+        flex-wrap: wrap;
+      }
+      .editing-arrows-container {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- 标题区 unchanged -->
+  <div class="hero" style="text-align: center;">
+    <h1>Recolour What Matters: Region-Aware Colour Editing via Token-Level Diffusion</h1>
+    <div class="authors">
+      Yuqi Yang<sup>1</sup>, Dongliang Chang<sup>1</sup>, Yijia Ling<sup>1</sup>,
+      Ruoyi Du<sup>1</sup>, Zhanyu Ma<sup>1</sup>
+    </div>
+    <div class="affiliation"><sup>1</sup>PRIS, Beijing University of Posts and Telecommunications</div>
+    <div class="links">
+      <a href="xx">Paper</a> <a href="#">Code (Coming Soon)</a> <a href="#">Dataset (Coming Soon)</a>
+    </div>
+  </div>
+
+  <!-- Figure 1 unchanged -->
+  <div class="figure">
+    <img src="figures/Fig1.jpg" alt="Method Framework">
+    <div class="caption"><strong>Figure 1.</strong> <strong>Editing results of ColourCrafter under varying reference colours.</strong>
+      Each row shows the input image and its edited outputs conditioned on different RGB references. 
+      As the reference colours vary smoothly from left to right, ColourCrafter produces continuous and precise recolouring with consistent structure and texture.</div>
+  </div>
+
+  <!-- Abstract unchanged -->
+  <h2>Abstract</h2>
+  <p>Colour is one of the most perceptually salient yet least controllable attributes in image generation. Although recent diffusion models can modify object colours from user instructions, their results often deviate from the intended hue, especially for fine-grained and local edits. 
+    Early text-driven methods rely on discrete language descriptions that cannot accurately represent continuous chromatic variations.
+    To overcome this limitation, we propose ColourCrafter, a unified diffusion framework that transforms colour editing from global tone transfer into a structured, region-aware generation process.
+    Unlike traditional colour-driven methods, ColourCrafter performs token-level fusion of RGB colour tokens and image tokens in latent space, selectively propagating colour information to semantically relevant regions while preserving structural fidelity.
+    A perceptual Lab-space Loss further enhances pixel-level precision by decoupling luminance and chrominance and constraining edits within masked areas.
+    Additionally, we build ColourfulSet, a large-scale dataset of high-quality image pairs with continuous and diverse colour variations.
+    Extensive experiments demonstrate that ColourCrafter achieves state-of-the-art colour accuracy, controllability and perceptual fidelity in fine-grained colour editing.</p>
+
+  <!-- Dataset -->
+  <h2>Colourful Dataset</h2>
+  <div class="figure">
+    <img src="figures/Fig_dataset_all_2.jpg" alt="dataset">
+    <div class="caption"><strong>Figure 2.</strong> <strong>Examples from the ColourfulSet dataset.</strong>
+      The edited images  are from different categories under various target colour references.</div>
+  </div>
+
+
+  <!-- Method unchanged -->
+  <h2>Method Overview</h2>
+  <div class="figure">
+    <img src="figures/Fig_method.jpg" alt="Method Framework">
+    <div class="caption"><strong>Figure3. Overview of the ColourCrafter pipeline.</strong>
+      (1) Dataset construction:
+      Using Flux.1-Kontext, we generate diverse image-colour pairs and employ a Vision-Language Model (VLM)
+      to filter samples for consistency, fidelity, and realism.
+      The corresponding RGB references are extracted to build the high-quality dataset
+      ColourfulSet. (2) Training: The original image, target colour reference, and text
+      prompt are jointly fed into the diffusion model, which is optimised with both 
+      Diffusion and Lab-space losses to enhance chromatic accuracy and perceptual consistency.
+      (3) Inference: Given an input image, a RGB reference, and a prompt, ColourCrafter
+      performs fine-grained, structure-preserving, and perceptually natural colour editing.</div>
+  </div>
+
+  <!-- ========= 重构 Experimental Results (slider) ========= -->
+  <h2>Experimental Results</h2>
+
+  <div class="slider-section">
+    <!-- 使用 flex 布局将左右箭头放在slider外部两侧，完全避免重叠 -->
+    <div class="slider-wrapper">
+      <!-- 左箭头 -->
+      <div class="nav-arrow" onclick="prevSlide()"></div>
+
+      <!-- slider容器本身不再包裹箭头，箭头独立在外面 -->
+      <div class="slider-container">
+        <div class="slider">
+          <div class="slide">
+            <img src="figures/main_result_2.jpg" alt="result1">
+            <div class="caption"><strong>Figure 4a. Comparison with other methods.</strong> The first column shows the reference
+              colours and original images. The comparison demonstrates that our method achieves
+              more precise and fine-grained colour editing while preserving structural integrity and
+              background consistency.</div>
+          </div>
+          <div class="slide">
+            <img src="figures/more_result_1.jpg" alt="result2">
+            <div class="caption"><strong>Figure 4b. Comparison with other methods.</strong> The first column shows the reference
+              colours and original images. The comparison demonstrates that our method achieves
+              more precise and fine-grained colour editing while preserving structural integrity and
+              background consistency.</div>
+          </div>
+          <div class="slide">
+            <img src="figures/more_result_2.jpg" alt="result3">
+            <div class="caption"><strong>Figure 4c. Comparison with other methods.</strong> The first column shows the reference
+              colours and original images. The comparison demonstrates that our method achieves
+              more precise and fine-grained colour editing while preserving structural integrity and
+              background consistency.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右箭头 -->
+      <div class="nav-arrow" onclick="nextSlide()"></div>
+    </div>
+  </div>
+
+  <!-- ========= 重构 颜色编辑展示 (group viewer) ========= -->
+  <!-- 使用新结构：箭头在figure-comparison两侧，不再绝对定位重叠 -->
+  <div class="editing-section">
+    <div class="editing-arrows-container">
+      <!-- 左箭头 -->
+      <div class="nav-arrow" id="prev-group"></div>
+
+      <!-- 原来的figure-comparison，去掉外层的figure-wrapper（避免双重定位） -->
+      <div class="figure-comparison" id="groupComparison">
+        <div class="left-images" id="left-images"></div>
+        <div class="right-image">
+          <img id="main-output" src="figures/output1_1.jpg" alt="output">
+        </div>
+      </div>
+
+      <!-- 右箭头 -->
+      <div class="nav-arrow" id="next-group"></div>
+    </div>
+  </div>
+
+  
+
+  <h2>Citation</h2>
+  <pre>
+@inproceedings{yourpaper2025,
+title={Paper Title Goes Here},
+author={Author A and Author B},
+year={2025}
+}
+  </pre>
+  <footer>© 2025 Paper Authors.</footer>
+</div>
+
+<script>
+/* ===== Slider 控制 (完全不变) ===== */
+let currentSlide = 0;
+const slides = document.querySelectorAll('.slide');
+
+function showSlide(index) {
+  if (index >= slides.length) currentSlide = 0;
+  else if (index < 0) currentSlide = slides.length - 1;
+  else currentSlide = index;
+
+  const slider = document.querySelector('.slider');
+  slider.style.transform = `translateX(-${currentSlide * 100}%)`;
+}
+
+function nextSlide() { showSlide(currentSlide + 1); }
+function prevSlide() { showSlide(currentSlide - 1); }
+
+/* ===== Image Group 数据 ===== */
+const imageGroups = [
+  {
+    original: "figures/original1.jpg",
+    refs: [
+      { thumb: "figures/color1_1.png", output: "figures/output1_1.jpg" },
+      { thumb: "figures/color1_2.png", output: "figures/output1_2.jpg" },
+      { thumb: "figures/color1_3.png", output: "figures/output1_3.jpg" },
+      { thumb: "figures/color1_4.png", output: "figures/output1_4.jpg" },
+      { thumb: "figures/color1_5.png", output: "figures/output1_5.jpg" }
+    ]
+  },
+  {
+    original: "figures/original2.jpg",
+    refs: [
+      { thumb: "figures/color2_1.png", output: "figures/output2_1.jpg" },
+      { thumb: "figures/color2_2.png", output: "figures/output2_2.jpg" },
+      { thumb: "figures/color2_3.png", output: "figures/output2_3.jpg" },
+      { thumb: "figures/color2_4.png", output: "figures/output2_4.jpg" },
+      { thumb: "figures/color2_5.png", output: "figures/output2_5.jpg" }
+    ]
+  },
+  {
+    original: "figures/original3.jpg",
+    refs: [
+      { thumb: "figures/color3_1.png", output: "figures/output3_1.jpg" },
+      { thumb: "figures/color3_2.png", output: "figures/output3_2.jpg" },
+      { thumb: "figures/color3_3.png", output: "figures/output3_3.jpg" },
+      { thumb: "figures/color3_4.png", output: "figures/output3_4.jpg" },
+      { thumb: "figures/color3_5.png", output: "figures/output3_5.jpg" }
+    ]
+  }
+];
+
+let currentGroupIndex = 0;
+
+function renderGroup(index) {
+  const group = imageGroups[index];
+  const left = document.getElementById("left-images");
+  const mainOutput = document.getElementById("main-output");
+
+  left.innerHTML = "";
+
+  // 原图
+  const originalDiv = document.createElement("div");
+  originalDiv.className = "thumb active";
+  originalDiv.innerHTML = `<img src="${group.original}" alt="original">`;
+  originalDiv.onclick = () => {
+    document.querySelectorAll(".thumb").forEach(t => t.classList.remove("active"));
+    originalDiv.classList.add("active");
+    mainOutput.src = group.original;
+  };
+  left.appendChild(originalDiv);
+
+  // references
+  group.refs.forEach(ref => {
+    const div = document.createElement("div");
+    div.className = "thumb";
+    div.innerHTML = `<img src="${ref.thumb}" alt="ref">`;
+    div.onclick = () => {
+      document.querySelectorAll(".thumb").forEach(t => t.classList.remove("active"));
+      div.classList.add("active");
+      mainOutput.src = ref.output;
+    };
+    left.appendChild(div);
+  });
+
+  mainOutput.src = group.original;
+}
+
+/* group 箭头事件 */
+document.getElementById("prev-group").onclick = () => {
+  currentGroupIndex = (currentGroupIndex - 1 + imageGroups.length) % imageGroups.length;
+  renderGroup(currentGroupIndex);
+};
+
+document.getElementById("next-group").onclick = () => {
+  currentGroupIndex = (currentGroupIndex + 1) % imageGroups.length;
+  renderGroup(currentGroupIndex);
+};
+
+// 初始化
+renderGroup(currentGroupIndex);
+</script>
+
+<!-- 确保没有遗漏: 删除旧的 .figure-wrapper 以防干扰，但已经在CSS中隐藏了旧wrapper类，不存在于结构中 -->
+</body>
+</html>
